@@ -1,15 +1,26 @@
 <template>
   <div class="container">
-    <ul class="menu-list">
-      <li><router-link to="/clientes">📄 Ver Clientes</router-link></li>
-      <li><router-link to="/operaciones">💱 Ver Operaciones</router-link></li>
-      <li><router-link to="/dashboard">📊 Ver Dashboard</router-link></li>
-    </ul>
-    <h1>
-      Bienvenido a 
-      <span class="typing">{{ currentCrypto }}</span>
-      <span class="cursor">|</span>
-    </h1>
+    <nav class="menu">
+      <router-link to="/clientes" class="menu-item">
+        <span class="icon">📄</span>
+        <span>Clientes</span>
+      </router-link>
+      <router-link to="/operaciones" class="menu-item">
+        <span class="icon">💱</span>
+        <span>Operaciones</span>
+      </router-link>
+      <router-link to="/dashboard" class="menu-item">
+        <span class="icon">📊</span>
+        <span>Dashboard</span>
+      </router-link>
+    </nav>
+    <section class="welcome">
+      <h1>
+        Bienvenido a
+        <span class="typing">{{ currentCrypto }}</span>
+        <span class="cursor">|</span>
+      </h1>
+    </section>
   </div>
 </template>
 
@@ -33,13 +44,12 @@ let charIndex = 0
 let isDeleting = false
 
 function typeEffect() {
-
   const word = cryptos[index]
   if (!isDeleting) {
     currentCrypto.value = word.substring(0, charIndex + 1)
     charIndex++
     if (charIndex === word.length) {
-      setTimeout(() => { isDeleting = true; typeEffect() }, 1200)
+      setTimeout(() => { isDeleting = true; typeEffect() }, 3200)
       return
     }
   } else {
@@ -59,19 +69,35 @@ onMounted(() => {
 </script>
 
 <style>
+
 body {
   margin: 0;
-  padding: 0;
-  background: #18181b;
-  background-image: url('https://www.telefonica.com/es/wp-content/uploads/sites/4/2022/06/Imagen1.jpg?w=1224&h=673&crop=1');
-  background-size: cover;
-  background-position: center;
-  min-height: 100vh;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #f3f4f6;
+  font-family: 'Fira Sans', sans-serif;
+  --primary-foreground: #333;
+  --primary-background: #f0f2f5;
+  color: #333;
+  --bg: #f0f2f5;
+  --primary: #333;
+  --accent: #aac1ff;
+  --secondary: #6c757d;
+  --text: #555;
+  --text-light: #777;
+  --text-dark: #222;
+  --text-muted: #999;
+  --text-highlight: #3a65db;
+  --border: #e0e0e0;
+  --border-light: #f0f0f0;
+  --border-dark: #ccc;
+  --border-accent: #3a65db;
+  --border-radius: 8px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --menu-bg: #ffffff;
+  --menu-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  --radius: 12px;
+  --font: 'Fira Sans', sans-serif;
+  --font-mono: 'Fira Mono', monospace;
+  box-sizing: border-box;
   overflow: hidden;
-  filter: contrast(1.1) brightness(0.9);
-  backdrop-filter: blur(5px);
 }
 
 .container {
@@ -80,85 +106,85 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding-top: 5rem;
-  backdrop-filter: none;
+  background: var(--bg);
+  padding: 0 1rem;
+  background: bla;
 }
 
-.menu-list {
-  list-style: none;
-  padding: 10px;
-  width: 95%;
-  flex-direction: row;
-  justify-content: space-around;
-  align-items: center;
-  position: fixed;
-  background: rgba(24, 24, 27, 0.85);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-sizing: border-box;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.3);
+.menu {
   display: flex;
-  top: 0;
-  left: 2.5%;
-  border-radius: 10rem;
-  z-index: 10;
+  gap: 2rem;
+  background: var(--menu-bg);
+  box-shadow: var(--menu-shadow);
+  border-radius: var(--radius);
+  padding: 1.2rem 2.5rem;
+  margin-bottom: 3rem;
 }
 
-.menu-list li {
-  margin: 0 1rem;
-}
-
-.menu-list a {
-  display: block;
-  background-color: #23232b;
-  color: #a5b4fc;
-  padding: 0.75rem 1.25rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 1.1rem;
+  color: var(--primary);
   text-decoration: none;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  transition: background-color 0.25s, box-shadow 0.25s, color 0.25s;
+  font-weight: 500;
+  padding: 0.5rem 1.2rem;
+  border-radius: 12px;
+  transition: background 0.18s, color 0.18s;
 }
 
-.menu-list a:hover {
-  background-color: #3730a3;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+.menu-item:hover, .menu-item.router-link-exact-active {
+  background: var(--accent);
+  color: #3a65db;  
+}
+
+.icon {
+  font-size: 1.3rem;
+}
+
+.welcome {
+  text-align: center;
 }
 
 h1 {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: #a5b4fc;
-  margin-bottom: 1.5rem;
-  letter-spacing: 0.05em;
-  text-shadow: 0 2px 16px #000a;
-  background: rgba(24,24,27,0.7);
-  border-radius: 1rem;
-  padding: 1.5rem 2.5rem;
-  margin-top: 5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  font-size: 5.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: -1px;
+  margin: 0;
 }
 
 .typing {
-  color: #fbbf24;
-  min-width: 120px;
-  display: inline-block;
+  color: var(--accent);
   font-family: 'Fira Mono', monospace;
-  letter-spacing: 0.04em;
+  font-size: 5.5rem;
+  font-weight: 700;
+  margin-left: 0.4rem;
+  color: rgb(39, 43, 250);
 }
 
 .cursor {
   display: inline-block;
-  width: 1ch;
-  color: #fbbf24;
-  animation: blink 0.8s steps(1) infinite;
-  font-weight: bold;
+  color: var(--accent);
+  font-size: 2.5rem;
+  animation: blink 1s steps(1) infinite;
+  margin-left: 2px;
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@media (max-width: 600px) {
+  .menu {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+  }
+  h1, .typing, .cursor {
+    font-size: 1.5rem;
+  }
 }
 </style>
