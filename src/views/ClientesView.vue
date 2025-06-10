@@ -1,17 +1,37 @@
 <template>
-  <div class="p-4">
-    <h1 class="text-xl font-bold mb-4">Clientes</h1>
-    <form @submit.prevent="crearCliente">
-      <input v-model="cliente.nombre" placeholder="Nombre" class="input" />
-      <input v-model="cliente.email" placeholder="Email" class="input" type="email" />
-      <button type="submit" class="btn">Crear</button>
-    </form>
+  <div class="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+    <div class="bg-white shadow-md rounded-lg p-8 w-full max-w-md">
+      <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">Clientes</h1>
+      <form @submit.prevent="crearCliente" class="space-y-4">
+        <input
+          v-model="cliente.nombre"
+          placeholder="Nombre"
+          class="input w-full"
+        />
+        <input
+          v-model="cliente.email"
+          placeholder="Email"
+          class="input w-full"
+          type="email"
+        />
+        <button type="submit" class="btn w-full">Crear</button>
+      </form>
+    </div>
 
-    <ul class="mt-4">
-      <li v-for="c in clientes" :key="c.clienteID">
-        {{ c.nombre }} - {{ c.email }}
-      </li>
-    </ul>
+    <div class="mt-8 w-full max-w-md">
+      <ul>
+        <li
+          v-for="c in clientes"
+          :key="c.clienteID"
+          class="bg-white shadow rounded-lg p-4 mb-4 flex justify-between items-center"
+        >
+          <span>
+            <span class="font-semibold">{{ c.nombre }}</span>
+            <span class="text-gray-500">- {{ c.email }}</span>
+          </span>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
@@ -36,16 +56,5 @@ const crearCliente = async () => {
 onMounted(cargarClientes);
 </script>
 
-<style scoped>
-.input {
-  display: block;
-  margin-bottom: 0.5rem;
-  padding: 0.5rem;
-}
-.btn {
-  padding: 0.5rem 1rem;
-  background: #10b981;
-  color: white;
-  border: none;
-}
+<style scoped>  
 </style>
