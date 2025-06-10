@@ -92,7 +92,7 @@ body {
   --border-radius: 8px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --menu-bg: #ffffff;
-  --menu-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  --menu-shadow: 0 1px 13px rgba(12, 28, 255, 0.363);
   --radius: 12px;
   --font: 'Fira Sans', sans-serif;
   --font-mono: 'Fira Mono', monospace;
