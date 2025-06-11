@@ -97,7 +97,7 @@ body {
   --font: 'Fira Sans', sans-serif;
   --font-mono: 'Fira Mono', monospace;
   box-sizing: border-box;
-  overflow: hidden;
+  
 }
 
 .container {
