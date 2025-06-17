@@ -39,7 +39,7 @@
             
             <span class="font-semibold">{{ c.nombre }}</span>
             <span class="text-gray-500">- {{ c.email }}</span>
-            <span class="button-delete"><button id="eliminar" >Eliminar</button></span>
+            <span class="button-delete"><button @click="eliminarCliente(c.clienteID)">Eliminar</button></span>
             <span class="button-edit"><button id="editar">Editar</button></span>
           </span>
         </li>
@@ -47,83 +47,39 @@
     </div>
   </div>
 
-  <div class="notificacion">
-    <p id="titulo"> </p>
-    <p id="mensaje"> </p>
-    <img src="" alt="" id="imagen">
+  <div>
+    <!-- ✅ Asegurate de tener esta línea -->
+    
+    <NotificacionPopup ref="notificacionRef" />
+
+    <!-- Tu código... -->
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { CargarCliente,EliminarCliente, MostrarClientes } from '../components/Cliente';
+import { CargarCliente, EliminarCliente, MostrarClientes } from '../components/Cliente';
+import NotificacionPopup from '@/assets/NotificacionPopup.vue'; // ✅ RUTA correcta
+
 
 onMounted(() => {
   Mostrar();
-
-  // ✅ Mover esto adentro para asegurar que el DOM existe
-  const volverAtras = document.querySelector('.volver-atras');
-  if (volverAtras) {
-    volverAtras.addEventListener('click', () => {
-      window.location.href = '/';
-    });
-  }
-
 });
+
+const notificacionRef = ref(null); // ✅ Referencia al componente
 
 const cliente = ref({ nombre: '', email: '' });
 const clientes = ref([]);
-var id = 0;
-const notificacion = ref({
-  titulo: '',
-  mensaje: '',
-  imagen: ''
-});
-
-// Función para mostrar notificación
-function mostrarNotificacion(titulo, mensaje, imagen) { 
-  
-  notificacion.value.titulo = titulo;
-  notificacion.value.mensaje = mensaje;
-  notificacion.value.imagen = imagen;
-  const notificacionElement = document.querySelector('.notificacion');
-  notificacionElement.style.display = 'block';
-
-  
-  setTimeout(() => {
-    notificacionElement.style.display = 'none';
-  }, 3000);
-}
-
-
-
-// Función para eliminar un cliente
-addEventListener('click', async function(event) {
-  if (event.target.id === 'eliminar') {
-    id = event.target.closest('li').getAttribute('id');
-    mostrarNotificacion('Eliminar Cliente', `cliente eliminado`, '');
-    const response = await EliminarCliente(id);
-    if(response){
-      Mostrar();
-    }else{
-      console.error("Error al eliminar el cliente");      
-    }
-
-    // this.alert(id);
-  }
-});
-
 
 
 async function CrearClietne() {
   const response = await CargarCliente(cliente.value.nombre, cliente.value.email);
   if (response) {
-    alert('Cliente creado con éxito');
-
+    notificacionRef.value.mostrar('Cliente creado', 'Se creó el cliente con éxito'); // ✅ Usás el método expuesto
     cliente.value = { nombre: '', email: '' };
     await Mostrar();
   } else {
-    console.error("Error al crear el cliente");
+    notificacionRef.value.mostrar('Error', 'No se pudo crear el cliente');
   }
 }
 
@@ -132,43 +88,26 @@ async function Mostrar() {
   if (response) {
     clientes.value = response.data;
   } else {
-    console.error("Error al obtener la lista de clientes");
+    notificacionRef.value.mostrar('Error', 'Error al obtener la lista de clientes');
+  }
+}
+
+async function eliminarCliente(id) {
+  const response = await EliminarCliente(id);
+  console.log(id);
+  if (response) {
+    notificacionRef.value.mostrar('Cliente eliminado', 'Eliminado correctamente');
+    await Mostrar();
+  } else {
+    notificacionRef.value.mostrar('Error', 'No se pudo eliminar el cliente');
   }
 }
 </script>
 
 
+
 <style scoped>
-.notificacion {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background-color: #fff;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 24px rgba(30, 41, 59, 0.08);
-  z-index: 1000;
-}
-.notificacion p {
-  margin: 0;
-  color: #1e293b;
-}
-.notificacion img {
-  max-width: 100px;
-  margin-top: 0.5rem;
-}
-#titulo {
-  font-weight: bold;
-  font-size: 1.2rem;
-}
-#mensaje {
-  font-size: 1rem;
-}
-#imagen {
-  width: 100%;
-  height: auto;
-}
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
 
 body {
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
