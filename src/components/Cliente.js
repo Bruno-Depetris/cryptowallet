@@ -13,7 +13,6 @@ export async function CargarCliente(nombre, email) {
 
 export async function MostrarClientes() {
   try{
-    console.log(await api.get('Cliente'));
     return await api.get('Cliente');
   }catch(error){
     return null;
@@ -22,7 +21,7 @@ export async function MostrarClientes() {
 
 export async function EliminarCliente(id) {
   try{
-    await api.delete('Cliente', {id});
+    await api.delete(`Cliente/${id}`);
     return true;
   }catch(error){
     return false;

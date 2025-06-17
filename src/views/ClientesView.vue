@@ -27,13 +27,16 @@
     </div>
 
     <div class="contenedor-clientes">
+      <h2 class="text-xl font-semibold mb-4 text-gray-800">Lista de Clientes</h2>
       <ul>
         <li
           v-for="c in clientes"
           :key="c.clienteID"
+          :id="c.clienteID"
           class="bg-white shadow rounded-lg p-4 mb-4 flex justify-between items-center"
         >
           <span>
+            
             <span class="font-semibold">{{ c.nombre }}</span>
             <span class="text-gray-500">- {{ c.email }}</span>
             <span class="button-delete"><button id="eliminar" >Eliminar</button></span>
@@ -43,69 +46,88 @@
       </ul>
     </div>
   </div>
+
+  <div class="notificacion">
+    <p id="titulo"> </p>
+    <p id="mensaje"> </p>
+    <img src="" alt="" id="imagen">
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { CargarCliente, MostrarClientes } from '../components/Cliente';
+import { CargarCliente,EliminarCliente, MostrarClientes } from '../components/Cliente';
 
 onMounted(() => {
   Mostrar();
-//   ✅ ¿Para qué sirve onMounted?
-// Se usa para:
 
-// Llamar a una API cuando el componente aparece por primera vez.
+  // ✅ Mover esto adentro para asegurar que el DOM existe
+  const volverAtras = document.querySelector('.volver-atras');
+  if (volverAtras) {
+    volverAtras.addEventListener('click', () => {
+      window.location.href = '/';
+    });
+  }
 
-// Cargar datos (como una lista de clientes, productos, etc.).
-
-// Hacer suscripciones o configurar cosas que dependen del DOM.
-
-// Ejecutar animaciones o efectos una vez que todo está listo.
 });
 
 const cliente = ref({ nombre: '', email: '' });
 const clientes = ref([]);
+var id = 0;
+const notificacion = ref({
+  titulo: '',
+  mensaje: '',
+  imagen: ''
+});
 
-addEventListener('click', function(event) {
+// Función para mostrar notificación
+function mostrarNotificacion(titulo, mensaje, imagen) { 
+  
+  notificacion.value.titulo = titulo;
+  notificacion.value.mensaje = mensaje;
+  notificacion.value.imagen = imagen;
+  const notificacionElement = document.querySelector('.notificacion');
+  notificacionElement.style.display = 'block';
+
+  
+  setTimeout(() => {
+    notificacionElement.style.display = 'none';
+  }, 3000);
+}
+
+
+
+// Función para eliminar un cliente
+addEventListener('click', async function(event) {
   if (event.target.id === 'eliminar') {
-    const id = event.target.closest('li').getAttribute('key');
-    this.alert(`Eliminar cliente con ID: ${id}`);
+    id = event.target.closest('li').getAttribute('id');
+    mostrarNotificacion('Eliminar Cliente', `cliente eliminado`, '');
+    const response = await EliminarCliente(id);
+    if(response){
+      Mostrar();
+    }else{
+      console.error("Error al eliminar el cliente");      
+    }
+
+    // this.alert(id);
   }
 });
 
 
-// async function EditarCliente(clienteId) {
-//   const cliente = clientes.value.find(c => c.clienteID === clienteId);
-//   if (cliente) {
-//     const nuevoNombre = prompt("Ingrese el nuevo nombre:", cliente.nombre);
-//     const nuevoEmail = prompt("Ingrese el nuevo email:", cliente.email);
-//     if (nuevoNombre && nuevoEmail) {
-//       cliente.nombre = nuevoNombre;
-//       cliente.email = nuevoEmail;
-//       // Aquí deberías llamar a una función para actualizar el cliente en la base de datos
-//       await Mostrar(); // recargar la lista de clientes
-//     }
-//   } else {
-//     console.error("Cliente no encontrado");
-//   }
-// }
-// var volverAtras = document.querySelector('.volver-atras');
-// volverAtras.addEventListener('click', function() {
-//   window.location.href = '/';
-// });
+
 async function CrearClietne() {
   const response = await CargarCliente(cliente.value.nombre, cliente.value.email);
   if (response) {
     alert('Cliente creado con éxito');
+
     cliente.value = { nombre: '', email: '' };
-    await Mostrar(); // recargar la lista de clientes
+    await Mostrar();
   } else {
     console.error("Error al crear el cliente");
   }
 }
 
-
-async function Mostrar(){
+async function Mostrar() {
   const response = await MostrarClientes();
   if (response) {
     clientes.value = response.data;
@@ -113,11 +135,41 @@ async function Mostrar(){
     console.error("Error al obtener la lista de clientes");
   }
 }
-
-
 </script>
 
+
 <style scoped>
+.notificacion {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 24px rgba(30, 41, 59, 0.08);
+  z-index: 1000;
+}
+.notificacion p {
+  margin: 0;
+  color: #1e293b;
+}
+.notificacion img {
+  max-width: 100px;
+  margin-top: 0.5rem;
+}
+#titulo {
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+#mensaje {
+  font-size: 1rem;
+}
+#imagen {
+  width: 100%;
+  height: auto;
+}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
 body {
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   align-items: center;
