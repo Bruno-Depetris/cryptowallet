@@ -106,10 +106,11 @@ async function eliminarCliente(id) {
 
 
 
-<style scoped>
+<style>
 
 
 body {
+  background: #f0f2f5;
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   align-items: center;
   text-align: center;

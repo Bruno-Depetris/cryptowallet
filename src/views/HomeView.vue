@@ -13,6 +13,10 @@
         <span class="icon">📊</span>
         <span>Dashboard</span>
       </router-link>
+      <router-link to="/cuentas" class="menu-item">
+        <span class="icon">🥷</span>
+        <span>Cuentas</span>
+      </router-link>
     </nav>
     <section class="welcome">
       <h1>
