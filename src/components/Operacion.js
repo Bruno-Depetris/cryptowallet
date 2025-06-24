@@ -10,3 +10,12 @@ export async function CrearOperacion(CuentaID, CriptoCode, Cantidad, Fecha, Acci
     }
 }
 
+export async function MostrarOperacion(){
+    try{
+        return await api.get('Operacion')
+
+    }catch(error){
+        console.log(`Error al mostrar operaciones \n datos del error : \n ${error}`);
+        return false;
+    }
+}

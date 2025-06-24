@@ -1,218 +1,313 @@
 <template>
-  <div class="operaciones-container">
-    <h1>Operaciones</h1>
-    <div class="formulario-contenedor">
-      <h2>Realizar una operación</h2>
+  <div class="container mx-auto p-4 max-w-md">
+    <router-link to="/" class="volver-atras">
+      <span class="mr-2">⬅️</span> Volver a Inicio
+    </router-link>
 
-      <label for="crypto-select">Criptomoneda</label>
-      <select id="crypto-select" v-model="criptoCode" @change="cargarDato" class="crypto-select"> 
-        <option disabled value="">Seleccione una criptomoneda</option>
-        <option value="BTC">Bitcoin (BTC)</option>
-        <option value="ETH">Ethereum (ETH)</option>
-        <option value="USDT">Tether (USDT)</option>
-      </select>
-      <p class="precio-actual">
-        Precio Actual de 1 {{ criptoCode }}:
-        <strong>
-          {{ precio !== null ? "$ " + precio : "Selecciona una criptomoneda" }}
-        </strong>
+    <form @submit.prevent="CargarOperacion" >
+      <div>
+        <label for="crypto-select" >Criptomoneda</label>
+        <select id="crypto-select" v-model="criptoCode" @change="cargarDato" class="w-full p-2 border rounded">
+          <option disabled value="">Seleccione una criptomoneda</option>
+          <option value="BTC">Bitcoin (BTC)</option>
+          <option value="ETH">Ethereum (ETH)</option>
+          <option value="USDT">Tether (USDT)</option>
+        </select>
+      </div>
+
+      <p >
+        Precio actual de 1 {{ criptoCode }}:
+        <strong>{{ precio !== null ? "$ " + precio.toLocaleString("es-AR") + " ARS" : "Selecciona una criptomoneda" }}</strong>
       </p>
 
-      <p class="monto-moneda">
+      <p >
         Cantidad de la moneda comprada:
-        <strong>
-          {{ montoMoneda !== null ? montoMoneda.toFixed(8) + " " + criptoCode : " " }}
-        </strong>
+        <strong>{{ typeof montoMoneda === 'number' ? montoMoneda.toFixed(6) + ' ' + criptoCode : montoMoneda }}</strong>
       </p>
 
-      <label for="cliente-select">Cliente</label>
-      <select id="cliente-select" v-model="selectedCliente" class="cliente-select">
-        <option disabled value="">Seleccione un cliente</option>
-        <option v-for="cliente in clientes" :key="cliente.id" :value="cliente">
-          {{ cliente.nombre }} ({{ cliente.email }})
-        </option>
-      </select>
+      <div>
+        <label for="cuentas-select" >Cuentas</label>
+        <select id="cuentas-select" v-model="selectedClienteID" class="w-full p-2 border rounded">
+          <option disabled value="">Seleccione una cuenta para operar</option>
+          <option v-for="cuenta in cuentas" :key="cuenta.cuentaID" :value="cuenta">
+            {{ cuenta.cliente.nombre }} ({{ cuenta.cliente.email }})
+          </option>
+        </select>
+      </div>
 
-      <label for="cantidad-input">Ingrese un monto</label>
-      <input id="cantidad-input" type="number" v-model="cantidad" min="0" />
+      <div>
+        <label for="cantidad-input" class="ingrese_monto">Ingrese un monto (ARS)</label>
+        <input id="cantidad-input" type="number" v-model="cantidad" min="0" class="w-full p-2 border rounded" />
+      </div>
 
-      <label for="accion-select">Acción</label>
-      <select id="accion-select" v-model="accionID">
-        <option disabled value="">Seleccione una acción</option>
-        <option value="1">Comprar</option>
-        <option value="2">Vender</option>
-      </select>
+      <div>
+        <label for="accion-select" class="block font-semibold mb-1">Acción</label>
+        <select id="accion-select" v-model="accionID" class="w-full p-2 border rounded">
+          <option disabled value="">Seleccione una acción</option>
+          <option value="1">Comprar</option>
+          <option value="2">Vender</option>
+        </select>
+      </div>
 
-      <button class="btn-operacion" @click="cargarOperacion">Realizar operación</button>
-    </div>
+      <button type="submit" class="enviar_button">
+        Crear Operación
+      </button>
+    </form>
+
+    <NotificacionPopup ref="notificacionRef" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from "vue";
-import getCriptoData from "../services/apiCrypto";
-import api from "../services/api";
+import { onMounted, ref, watch } from 'vue';
+import { MostrarCuentas } from '../components/Cuentas';
+import NotificacionPopup from '../assets/NotificacionPopup.vue';
+import getCriptoData from '../services/apiCrypto';
+import { CrearOperacion } from '../components/Operacion';
 
-const clientes = ref([]);
-const criptoCode = ref(""); 
-const precio = ref(null); 
-const montoMoneda = ref(null)
-const selectedCliente = ref("");
-const cantidad = ref(0);
-const accionID = ref("");
+const cuentas = ref([]);
+const notificacionRef = ref(null);
+const selectedClienteID = ref('');
+const criptoCode = ref('');
+const precio = ref(null);
+const cantidad = ref(null);
+const montoMoneda = ref('');
+const accionID = ref(null);
 
-const cargarDato = async () => {
-  if (!criptoCode.value) return;
+onMounted(async () => {
+  await MostrarCuentasClientes();
+});
+
+watch(selectedClienteID, (nuevoValor) => {
+  if (nuevoValor) {
+    console.log('Cliente seleccionado:', nuevoValor);
+  }
+});
+
+watch([cantidad, criptoCode, precio], () => {
+  if (!cantidad.value || !criptoCode.value || !precio.value) {
+    montoMoneda.value = 'Ingrese un monto válido';
+  } else {
+    montoMoneda.value = cantidad.value / precio.value;
+  }
+});
+
+async function cargarDato() {
   try {
     const response = await getCriptoData(criptoCode.value);
     precio.value = response.data.ask;
   } catch (error) {
-    console.error("Error al obtener datos:", error);
-    precio.value = null;
+    console.error(`Error al cargar el precio de ${criptoCode.value}:`, error);
   }
-};
+}
 
-watch([precio, cantidad], ([nuevoPrecio, nuevaCantidad]) => {
-  if (nuevoPrecio !== null && nuevaCantidad > 0) {
-    montoMoneda.value = nuevaCantidad / nuevoPrecio;
-  } else {
-    montoMoneda.value = null;
+async function MostrarCuentasClientes() {
+  try {
+    const response = await MostrarCuentas();
+    cuentas.value = Array.isArray(response) ? response : response?.data || [];
+  } catch (error) {
+    console.error('Error al cargar cuentas:', error);
+    notificacionRef.value?.mostrar?.('Error', 'No se pudo cargar la lista de cuentas');
   }
-});
+}
 
-const cargarClientes = async () => {
-  const res = await api.get("Cliente");
-  clientes.value = res.data;
-};
-onMounted(cargarClientes);
-
-const cargarOperacion = async () => {
-  if (!criptoCode.value || !selectedCliente.value || !accionID.value || !cantidad.value) {
-    alert("Por favor, complete todos los campos");
+async function CargarOperacion() {
+  if (!selectedClienteID.value || !criptoCode.value || !cantidad.value || !accionID.value || !precio.value) {
+    notificacionRef.value?.mostrar('Error', 'Por favor complete todos los campos');
     return;
   }
-
-  const montoARS = precio.value / cantidad.value;
-
-  const operacion = {
-    CuentaID: selectedCliente.value.cuentaID,
-    CriptoCode: criptoCode.value,
-    Cantidad: cantidad.value,
-    Fecha: new Date().toISOString(),
-    AccionID: accionID.value,
-    MontoARS: montoARS
-  };
+console.log({
+  CuentaID: selectedClienteID.value.cuentaID,
+  CriptoCode: criptoCode.value,
+  Cantidad: montoMoneda.value,
+  Fecha: new Date().toISOString(),
+  AccionID: parseInt(accionID.value),
+  MontoARS: cantidad.value
+});
 
   try {
-    await api.post('Operacion', operacion);
-    console.log('Operación cargada con éxito');
+    const operacionCreada = await CrearOperacion(
+      selectedClienteID.value.cuentaID,
+      criptoCode.value,
+      montoMoneda.value,
+      new Date().toISOString(),
+      parseInt(accionID.value),
+      cantidad.value
+    );
+
+    if (operacionCreada) {
+      notificacionRef.value?.mostrar('Operación creada', 'La operación se registró con éxito');
+      cantidad.value = null;
+      criptoCode.value = '';
+      montoMoneda.value = '';
+      accionID.value = null;
+      selectedClienteID.value = '';
+      precio.value = null;
+    }
   } catch (error) {
-    console.error('Error al cargar la operación:', error);
+    console.error('Error al crear la operación:', error);
+    notificacionRef.value?.mostrar('Error', 'No se pudo registrar la operación');
   }
-};
+}
 </script>
 
 <style scoped>
-:root {
-  --primary: #22223b;
-  --secondary: #4a4e69;
-  --accent: #9a8c98;
-  --background: #f2e9e4;
-  --white: #fff;
-  --border-radius: 14px;
-  --shadow: 0 4px 24px rgba(34,34,59,0.08);
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9fafb;
+  margin: 0;
+  padding: 0;
 }
 
-.operaciones-container {
+.container {
+  bottom: 300px;
   min-height: 100vh;
-  background: var(--background);
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   align-items: center;
-  padding: 40px 0;
+
+  background: linear-gradient(135deg, #f9fafb 60%, #e0e7ff 100%);
 }
 
-h1 {
-  color: var(--primary);
-  font-weight: 700;
-  margin-bottom: 24px;
-  letter-spacing: 1px;
-}
-
-.formulario-contenedor {
-  background: var(--white);
-  padding: 32px 28px;
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow);
-  min-width: 340px;
-  max-width: 380px;
+form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  position: relative;
+  margin-top: 2rem;
+  background: #fff;
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 24px rgba(6, 10, 255, 0.07), 0 1.5px 6px rgba(0, 102, 255, 0.03);
+  padding: 4rem;
+  width: 100%;
+  max-width: 420px;
+  transition: box-shadow 0.2s;
 }
 
-h2 {
-  color: var(--secondary);
-  font-size: 1.2rem;
-  margin-bottom: 10px;
-  font-weight: 600;
+form:focus-within {
+  box-shadow: 0 8px 32px rgba(59,130,246,0.10), 0 2px 8px rgba(0,0,0,0.04);
 }
 
 label {
-  color: var(--primary);
-  font-size: 0.98rem;
-  margin-bottom: 4px;
-  font-weight: 500;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.25rem;
+  margin-top: 1.24rem ;
+  display: block;
 }
 
 select,
 input[type="number"] {
-  padding: 10px 12px;
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  background: #faf9f6;
+
+  width: 95%;
+  padding: 0.75rem 0rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: #f3f4f6;
   font-size: 1rem;
-  margin-bottom: 8px;
-  transition: border 0.2s;
-  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-top: 0.25rem;
 }
 
 select:focus,
 input[type="number"]:focus {
-  border: 1.5px solid var(--secondary);
+  border-color: #2563eb;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 0 0 2px #93c5fd55;
 }
 
-.precio-actual,
-.monto-moneda {
-  background: #f8f7fa;
-  border-radius: 8px;
-  padding: 8px 12px;
-  color: var(--secondary);
-  font-size: 0.98rem;
-  margin-bottom: 0;
-}
-
-strong {
-  color: var(--primary);
-  font-weight: 600;
-}
-
-.btn-operacion {
-  margin-top: 10px;
-  padding: 12px 0;
-  background: linear-gradient(90deg, var(--secondary), var(--accent));
-  color: var(--white);
+button[type="submit"] {
+  background: linear-gradient(90deg, #2563eb 60%, #60a5fa 100%);
+  color: #fff;
+  font-weight: 700;
   border: none;
-  border-radius: 8px;
-  font-size: 1.08rem;
-  font-weight: 600;
+  border-radius: 0.75rem;
+  padding: 0.75rem 0;
+  font-size: 1.1rem;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
-  box-shadow: 0 2px 8px rgba(74, 78, 105, 0.08);
+  transition: background 0.2s, box-shadow 0.2s;
+  margin-top: 0.5rem;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.07);
 }
 
-.btn-operacion:hover {
-  background: linear-gradient(90deg, var(--accent), var(--secondary));
-  transform: translateY(-2px) scale(1.03);
+button[type="submit"]:hover {
+  background: linear-gradient(90deg, #1d4ed8 60%, #3b82f6 100%);
+  box-shadow: 0 4px 16px rgba(59,130,246,0.12);
+}
+
+.router-link {
+  color: #2563eb;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.router-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.bg-white {
+  background: #fff;
+}
+
+.shadow-md {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07), 0 1.5px 6px rgba(0,0,0,0.03);
+}
+
+.rounded-xl {
+  border-radius: 1.25rem;
+}
+
+.p-6 {
+  padding: 1.5rem;
+}
+
+.space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+.text-blue-600 {
+  color: #2563eb;
+}
+
+.text-gray-600 {
+  color: #6b7280;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+.volverInicio{
+  color: #000000;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+@media (max-width: 600px) {
+  .container {
+    padding: 1rem 0.25rem;
+  }
+  form {
+    padding: 1rem;
+    max-width: 100%;
+    border-radius: 1rem;
+  }
+  .p-6 {
+    padding: 1rem;
+  }
 }
 </style>
