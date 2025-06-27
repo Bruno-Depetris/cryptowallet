@@ -130,7 +130,7 @@ console.log({
       selectedClienteID.value.cuentaID,
       criptoCode.value,
       montoMoneda.value,
-      new Date().toISOString(),
+      new Date().toLocaleTimeString('es-AR', { hour12: false }),
       parseInt(accionID.value),
       cantidad.value
     );
