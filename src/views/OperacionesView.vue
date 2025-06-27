@@ -42,10 +42,11 @@
 
       <div>
         <label for="accion-select" class="block font-semibold mb-1">Acción</label>
-        <select id="accion-select" v-model="accionID" class="w-full p-2 border rounded">
+        <select id="accion-select" v-model="selectedAccionID" class="w-full p-2 border rounded">
           <option disabled value="">Seleccione una acción</option>
-          <option value="1">Comprar</option>
-          <option value="2">Vender</option>
+          <option v-for="accion in acciones" :key="accion.accionID" :value="accion">
+            {{ accion.accion }}
+          </option>
         </select>
       </div>
 
@@ -64,8 +65,10 @@ import { MostrarCuentas } from '../components/Cuentas';
 import NotificacionPopup from '../assets/NotificacionPopup.vue';
 import getCriptoData from '../services/apiCrypto';
 import { CrearOperacion } from '../components/Operacion';
+import { MostrarAcciones } from '../components/Accion';
 
 const cuentas = ref([]);
+const acciones = ref([]);
 const notificacionRef = ref(null);
 const selectedClienteID = ref('');
 const criptoCode = ref('');
@@ -73,9 +76,10 @@ const precio = ref(null);
 const cantidad = ref(null);
 const montoMoneda = ref('');
 const accionID = ref(null);
-
+const selectedAccionID = ref('')
 onMounted(async () => {
   await MostrarCuentasClientes();
+  await MostrarAccionesFc();
 });
 
 watch(selectedClienteID, (nuevoValor) => {
@@ -84,6 +88,11 @@ watch(selectedClienteID, (nuevoValor) => {
   }
 });
 
+watch(selectedAccionID, (nuevaAccion) => {
+  if (nuevaAccion) {
+    console.log('Cliente seleccionado:', nuevaAccion);
+  }
+});
 watch([cantidad, criptoCode, precio], () => {
   if (!cantidad.value || !criptoCode.value || !precio.value) {
     montoMoneda.value = 'Ingrese un monto válido';
@@ -111,27 +120,30 @@ async function MostrarCuentasClientes() {
   }
 }
 
+async function MostrarAccionesFc(){
+  try{
+    const response =  await MostrarAcciones();
+    acciones.value = Array.isArray(response) ? response : response?.data || [];
+  }catch(error){
+    console.error('Error al cargar acciones:', error);
+    notificacionRef.value?.mostrar?.('Error', 'No se pudo cargar la lista de acciones');
+  }
+
+}
+
 async function CargarOperacion() {
-  if (!selectedClienteID.value || !criptoCode.value || !cantidad.value || !accionID.value || !precio.value) {
+  if (!selectedClienteID.value || !criptoCode.value || !cantidad.value || !selectedAccionID.value || !precio.value) {
     notificacionRef.value?.mostrar('Error', 'Por favor complete todos los campos');
     return;
   }
-console.log({
-  CuentaID: selectedClienteID.value.cuentaID,
-  CriptoCode: criptoCode.value,
-  Cantidad: montoMoneda.value,
-  Fecha: new Date().toISOString(),
-  AccionID: parseInt(accionID.value),
-  MontoARS: cantidad.value
-});
+
 
   try {
     const operacionCreada = await CrearOperacion(
       selectedClienteID.value.cuentaID,
       criptoCode.value,
       montoMoneda.value,
-      new Date().toLocaleTimeString('es-AR', { hour12: false }),
-      parseInt(accionID.value),
+      selectedAccionID.value.accionID,
       cantidad.value
     );
 
