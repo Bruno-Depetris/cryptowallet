@@ -1,21 +1,13 @@
 
 import api from "../services/api"
-import { MostrarClientes } from "./Cliente";
 
 
-export async function CrearCuenta(cliId, EstadoId) {
+export async function CrearCuenta(clienteID, estadoID = 1) {
     try{
-        await api.post('Cuenta', cliId, EstadoId);
-
+        const response = await api.post('Cuenta', { clienteID, estadoID });
+        return response?.data || true;
     }catch(error){
-        var nombre = "";
-        await MostrarClientes.forEach(cliente => {
-            if(cliente.clienteID === cliId){
-                nombre = cliente.nombre;
-            }
-        });
-        console.log(`Error al crear la cuenta para el cliente ${nombre}`);
-
+        console.log(`Error al crear la cuenta: ${error}`);
         return false;
     }
 }
@@ -26,16 +18,18 @@ export async function MostrarCuentas() {
         return await api.get('Cuenta')
     }catch(error){
         console.log(`Error al mostrar las cuentas: \n ${error}`)
+        return null;
     }
     
 }
 
 export async function EliminarCuenta(id){
     try{
-        await api.delete(`Cuenta/${id}}`);
+        await api.delete(`Cuenta/${id}`);
         return true;
     }catch(error){
         console.log(`Error al eliminar una cuenta ${error}`);
+        return false;
     }
 
 }

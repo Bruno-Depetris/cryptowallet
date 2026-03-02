@@ -1,325 +1,162 @@
 <template>
-  <div class="container mx-auto p-4 max-w-md">
-    <router-link to="/" class="volver-atras">
-      <span class="mr-2">⬅️</span> Volver a Inicio
-    </router-link>
-
-    <form @submit.prevent="CargarOperacion" >
-      <div>
-        <label for="crypto-select" >Criptomoneda</label>
-        <select id="crypto-select" v-model="criptoCode" @change="cargarDato" class="w-full p-2 border rounded">
-          <option disabled value="">Seleccione una criptomoneda</option>
-          <option value="BTC">Bitcoin (BTC)</option>
-          <option value="ETH">Ethereum (ETH)</option>
-          <option value="USDT">Tether (USDT)</option>
-        </select>
-      </div>
-
-      <p >
-        Precio actual de 1 {{ criptoCode }}:
-        <strong>{{ precio !== null ? "$ " + precio.toLocaleString("es-AR") + " ARS" : "Selecciona una criptomoneda" }}</strong>
-      </p>
-
-      <p >
-        Cantidad de la moneda comprada:
-        <strong>{{ typeof montoMoneda === 'number' ? montoMoneda.toFixed(6) + ' ' + criptoCode : montoMoneda }}</strong>
-      </p>
-
-      <div>
-        <label for="cuentas-select" >Cuentas</label>
-        <select id="cuentas-select" v-model="selectedClienteID" class="w-full p-2 border rounded">
-          <option disabled value="">Seleccione una cuenta para operar</option>
-          <option v-for="cuenta in cuentas" :key="cuenta.cuentaID" :value="cuenta">
-            {{ cuenta.cliente.nombre }} ({{ cuenta.cliente.email }})
+  <div class="grid grid-2">
+    <section class="card">
+      <h2 class="title">Nueva operación</h2>
+      <form @submit.prevent="crearOperacion">
+        <label>Cliente</label>
+        <select v-model="form.clienteID" required>
+          <option disabled value="">Seleccione un cliente</option>
+          <option v-for="cliente in clientes" :key="cliente.clienteID" :value="cliente.clienteID">
+            {{ cliente.nombre }} ({{ cliente.email }})
           </option>
         </select>
-      </div>
 
-      <div>
-        <label for="cantidad-input" class="ingrese_monto">Ingrese un monto (ARS)</label>
-        <input id="cantidad-input" type="number" v-model="cantidad" min="0" class="w-full p-2 border rounded" />
-      </div>
+        <label>Criptomoneda</label>
+        <select v-model="form.criptoCode" required>
+          <option disabled value="">Seleccione una cripto</option>
+          <option v-for="code in codigosCripto" :key="code" :value="code">{{ code }}</option>
+        </select>
 
-      <div>
-        <label for="accion-select" class="block font-semibold mb-1">Acción</label>
-        <select id="accion-select" v-model="selectedAccionID" class="w-full p-2 border rounded">
+        <label>Cantidad cripto</label>
+        <input v-model.number="form.criptoAmount" type="number" min="0" step="0.000001" required />
+
+        <label>Acción</label>
+        <select v-model="form.action" required>
           <option disabled value="">Seleccione una acción</option>
-          <option v-for="accion in acciones" :key="accion.accionID" :value="accion">
+          <option v-for="accion in acciones" :key="accion.accionID" :value="accion.accion">
             {{ accion.accion }}
           </option>
         </select>
-      </div>
 
-      <button type="submit" class="enviar_button">
-        Crear Operación
-      </button>
-    </form>
+        <button type="submit">Crear operación</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2 class="title">Operaciones</h2>
+      <button type="button" @click="cargarOperaciones">Recargar</button>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>ClienteID</th>
+            <th>Cripto</th>
+            <th>Cantidad</th>
+            <th>Acción</th>
+            <th>Dinero</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="op in operaciones" :key="op.operacionID">
+            <td>{{ op.operacionID }}</td>
+            <td>{{ op.clienteID }}</td>
+            <td>{{ op.criptoCode }}</td>
+            <td>{{ Number(op.criptoAmount).toFixed(6) }}</td>
+            <td>{{ op.action }}</td>
+            <td>${{ Number(op.money || 0).toLocaleString('es-AR') }}</td>
+            <td>{{ formatearFecha(op.datetime) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
 
     <NotificacionPopup ref="notificacionRef" />
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue';
-import { MostrarCuentas } from '../components/Cuentas';
+import { onMounted, ref } from 'vue';
 import NotificacionPopup from '../assets/NotificacionPopup.vue';
-import getCriptoData from '../services/apiCrypto';
-import { CrearOperacion } from '../components/Operacion';
+import { CrearOperacion, MostrarOperacion } from '../components/Operacion';
 import { MostrarAcciones } from '../components/Accion';
+import { MostrarClientes } from '../components/Cliente';
 
-const cuentas = ref([]);
+const clientes = ref([]);
 const acciones = ref([]);
+const operaciones = ref([]);
 const notificacionRef = ref(null);
-const selectedClienteID = ref('');
-const criptoCode = ref('');
-const precio = ref(null);
-const cantidad = ref(null);
-const montoMoneda = ref('');
-const accionID = ref(null);
-const selectedAccionID = ref('')
+const codigosCripto = ['BTC', 'ETH', 'USDT', 'SOL', 'ADA', 'XRP'];
+
+const form = ref({
+  clienteID: '',
+  criptoCode: '',
+  criptoAmount: null,
+  action: ''
+});
+
 onMounted(async () => {
-  await MostrarCuentasClientes();
-  await MostrarAccionesFc();
+  await cargarClientes();
+  await cargarAcciones();
+  await cargarOperaciones();
 });
 
-watch(selectedClienteID, (nuevoValor) => {
-  if (nuevoValor) {
-    console.log('Cliente seleccionado:', nuevoValor);
-  }
-});
-
-watch(selectedAccionID, (nuevaAccion) => {
-  if (nuevaAccion) {
-    console.log('Cliente seleccionado:', nuevaAccion);
-  }
-});
-watch([cantidad, criptoCode, precio], () => {
-  if (!cantidad.value || !criptoCode.value || !precio.value) {
-    montoMoneda.value = 'Ingrese un monto válido';
-  } else {
-    montoMoneda.value = cantidad.value / precio.value;
-  }
-});
-
-async function cargarDato() {
+async function cargarClientes() {
   try {
-    const response = await getCriptoData(criptoCode.value);
-    precio.value = response.data.ask;
+    const response = await MostrarClientes();
+    clientes.value = response?.data || [];
   } catch (error) {
-    console.error(`Error al cargar el precio de ${criptoCode.value}:`, error);
+    console.error('Error al cargar clientes:', error);
+    notificacionRef.value?.mostrar?.('Error', 'No se pudo cargar la lista de clientes');
   }
 }
 
-async function MostrarCuentasClientes() {
-  try {
-    const response = await MostrarCuentas();
-    cuentas.value = Array.isArray(response) ? response : response?.data || [];
-  } catch (error) {
-    console.error('Error al cargar cuentas:', error);
-    notificacionRef.value?.mostrar?.('Error', 'No se pudo cargar la lista de cuentas');
-  }
-}
-
-async function MostrarAccionesFc(){
+async function cargarAcciones() {
   try{
     const response =  await MostrarAcciones();
-    acciones.value = Array.isArray(response) ? response : response?.data || [];
+    const data = response?.data || [];
+    acciones.value = data.length > 0 ? data : [
+      { accionID: 1, accion: 'purchase' },
+      { accionID: 2, accion: 'sale' }
+    ];
   }catch(error){
     console.error('Error al cargar acciones:', error);
     notificacionRef.value?.mostrar?.('Error', 'No se pudo cargar la lista de acciones');
   }
-
 }
 
-async function CargarOperacion() {
-  if (!selectedClienteID.value || !criptoCode.value || !cantidad.value || !selectedAccionID.value || !precio.value) {
+async function cargarOperaciones() {
+  const response = await MostrarOperacion();
+  operaciones.value = response?.data || [];
+}
+
+async function crearOperacion() {
+  if (!form.value.clienteID || !form.value.criptoCode || !form.value.criptoAmount || !form.value.action) {
     notificacionRef.value?.mostrar('Error', 'Por favor complete todos los campos');
     return;
   }
 
-
   try {
     const operacionCreada = await CrearOperacion(
-      selectedClienteID.value.cuentaID,
-      criptoCode.value,
-      montoMoneda.value,
-      selectedAccionID.value.accionID,
-      cantidad.value
+      Number(form.value.clienteID),
+      form.value.criptoCode,
+      Number(form.value.criptoAmount),
+      form.value.action
     );
 
     if (operacionCreada) {
       notificacionRef.value?.mostrar('Operación creada', 'La operación se registró con éxito');
-      cantidad.value = null;
-      criptoCode.value = '';
-      montoMoneda.value = '';
-      accionID.value = null;
-      selectedClienteID.value = '';
-      precio.value = null;
+      form.value = {
+        clienteID: '',
+        criptoCode: '',
+        criptoAmount: null,
+        action: ''
+      };
+      await cargarOperaciones();
     }
   } catch (error) {
     console.error('Error al crear la operación:', error);
     notificacionRef.value?.mostrar('Error', 'No se pudo registrar la operación');
   }
 }
+
+function formatearFecha(fecha) {
+  if (!fecha) {
+    return '-';
+  }
+  return new Date(fecha).toLocaleString('es-AR');
+}
 </script>
 
 <style scoped>
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f9fafb;
-  margin: 0;
-  padding: 0;
-}
-
-.container {
-  bottom: 300px;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
-
-  background: linear-gradient(135deg, #f9fafb 60%, #e0e7ff 100%);
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  margin-top: 2rem;
-  background: #fff;
-  border-radius: 1.25rem;
-  box-shadow: 0 4px 24px rgba(6, 10, 255, 0.07), 0 1.5px 6px rgba(0, 102, 255, 0.03);
-  padding: 4rem;
-  width: 100%;
-  max-width: 420px;
-  transition: box-shadow 0.2s;
-}
-
-form:focus-within {
-  box-shadow: 0 8px 32px rgba(59,130,246,0.10), 0 2px 8px rgba(0,0,0,0.04);
-}
-
-label {
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.25rem;
-  margin-top: 1.24rem ;
-  display: block;
-}
-
-select,
-input[type="number"] {
-
-  width: 95%;
-  padding: 0.75rem 0rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  background: #f3f4f6;
-  font-size: 1rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  margin-top: 0.25rem;
-}
-
-select:focus,
-input[type="number"]:focus {
-  border-color: #2563eb;
-  outline: none;
-  background: #fff;
-  box-shadow: 0 0 0 2px #93c5fd55;
-}
-
-button[type="submit"] {
-  background: linear-gradient(90deg, #2563eb 60%, #60a5fa 100%);
-  color: #fff;
-  font-weight: 700;
-  border: none;
-  border-radius: 0.75rem;
-  padding: 0.75rem 0;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s;
-  margin-top: 0.5rem;
-  box-shadow: 0 2px 8px rgba(59,130,246,0.07);
-}
-
-button[type="submit"]:hover {
-  background: linear-gradient(90deg, #1d4ed8 60%, #3b82f6 100%);
-  box-shadow: 0 4px 16px rgba(59,130,246,0.12);
-}
-
-.router-link {
-  color: #2563eb;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.router-link:hover {
-  color: #1d4ed8;
-  text-decoration: underline;
-}
-
-.bg-white {
-  background: #fff;
-}
-
-.shadow-md {
-  box-shadow: 0 4px 24px rgba(0,0,0,0.07), 0 1.5px 6px rgba(0,0,0,0.03);
-}
-
-.rounded-xl {
-  border-radius: 1.25rem;
-}
-
-.p-6 {
-  padding: 1.5rem;
-}
-
-.space-y-4 > * + * {
-  margin-top: 1rem;
-}
-
-.text-blue-600 {
-  color: #2563eb;
-}
-
-.text-gray-600 {
-  color: #6b7280;
-}
-
-.font-semibold {
-  font-weight: 600;
-}
-
-.font-bold {
-  font-weight: 700;
-}
-.volverInicio{
-  color: #000000;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-@media (max-width: 600px) {
-  .container {
-    padding: 1rem 0.25rem;
-  }
-  form {
-    padding: 1rem;
-    max-width: 100%;
-    border-radius: 1rem;
-  }
-  .p-6 {
-    padding: 1rem;
-  }
-}
 </style>
