@@ -1,10 +1,13 @@
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 export async function MostrarMovimientos() {
   try {
-    return await api.get('Movimiento');
+    const response = await api.get('Movimiento');
+    return response.data ?? [];
   } catch (error) {
-    console.log(`Error al mostrar movimientos: ${error}`);
-    return null;
+    if (error.response?.status === 404) {
+      return [];
+    }
+    throw new Error(getApiErrorMessage(error, 'No se pudieron obtener movimientos.'));
   }
 }

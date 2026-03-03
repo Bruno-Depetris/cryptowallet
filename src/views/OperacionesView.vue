@@ -4,7 +4,7 @@
       <h2 class="title">Nueva operación</h2>
       <form @submit.prevent="crearOperacion">
         <label>Cliente</label>
-        <select v-model="form.clienteID" required>
+        <select v-model.number="form.clienteID" required>
           <option disabled value="">Seleccione un cliente</option>
           <option v-for="cliente in clientes" :key="cliente.clienteID" :value="cliente.clienteID">
             {{ cliente.nombre }} ({{ cliente.email }})
@@ -23,18 +23,29 @@
         <label>Acción</label>
         <select v-model="form.action" required>
           <option disabled value="">Seleccione una acción</option>
-          <option v-for="accion in acciones" :key="accion.accionID" :value="accion.accion">
-            {{ accion.accion }}
-          </option>
+          <option value="purchase">purchase</option>
+          <option value="sale">sale</option>
         </select>
 
-        <button type="submit">Crear operación</button>
+        <button type="submit" :disabled="cargando">Crear operación</button>
       </form>
+
+      <p v-if="mensaje" class="message" :class="mensajeTipo">{{ mensaje }}</p>
     </section>
 
     <section class="card">
-      <h2 class="title">Operaciones</h2>
-      <button type="button" @click="cargarOperaciones">Recargar</button>
+      <div class="toolbar">
+        <h2 class="title">Operaciones</h2>
+        <button type="button" class="secondary" @click="cargarOperaciones" :disabled="cargando">Recargar</button>
+      </div>
+
+      <label>Filtrar por cliente ID (opcional)</label>
+      <input v-model.number="filtroClienteId" type="number" min="1" placeholder="Ej: 1" />
+      <button type="button" class="secondary" @click="aplicarFiltro" :disabled="cargando">Aplicar filtro</button>
+      <button type="button" class="secondary" @click="limpiarFiltro" :disabled="cargando">Limpiar filtro</button>
+
+      <p v-if="!operaciones.length" class="muted">No hay operaciones para mostrar.</p>
+
       <table>
         <thead>
           <tr>
@@ -60,93 +71,126 @@
         </tbody>
       </table>
     </section>
-
-    <NotificacionPopup ref="notificacionRef" />
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue';
-import NotificacionPopup from '../assets/NotificacionPopup.vue';
-import { CrearOperacion, MostrarOperacion } from '../components/Operacion';
-import { MostrarAcciones } from '../components/Accion';
+import { CrearOperacion, MostrarOperacion, MostrarOperacionPorCliente } from '../components/Operacion';
 import { MostrarClientes } from '../components/Cliente';
+import { MostrarCriptos } from '../components/Criptos';
 
 const clientes = ref([]);
-const acciones = ref([]);
 const operaciones = ref([]);
-const notificacionRef = ref(null);
-const codigosCripto = ['BTC', 'ETH', 'USDT', 'SOL', 'ADA', 'XRP'];
+const codigosCripto = ref([]);
+const cargando = ref(false);
+const filtroClienteId = ref(null);
+const mensaje = ref('');
+const mensajeTipo = ref('ok');
 
 const form = ref({
-  clienteID: '',
+  clienteID: null,
   criptoCode: '',
   criptoAmount: null,
   action: ''
 });
 
 onMounted(async () => {
-  await cargarClientes();
-  await cargarAcciones();
-  await cargarOperaciones();
+  await Promise.all([cargarClientes(), cargarCriptos(), cargarOperaciones()]);
 });
 
 async function cargarClientes() {
   try {
-    const response = await MostrarClientes();
-    clientes.value = response?.data || [];
+    clientes.value = await MostrarClientes();
   } catch (error) {
-    console.error('Error al cargar clientes:', error);
-    notificacionRef.value?.mostrar?.('Error', 'No se pudo cargar la lista de clientes');
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
   }
 }
 
-async function cargarAcciones() {
-  try{
-    const response =  await MostrarAcciones();
-    const data = response?.data || [];
-    acciones.value = data.length > 0 ? data : [
-      { accionID: 1, accion: 'purchase' },
-      { accionID: 2, accion: 'sale' }
-    ];
-  }catch(error){
-    console.error('Error al cargar acciones:', error);
-    notificacionRef.value?.mostrar?.('Error', 'No se pudo cargar la lista de acciones');
+async function cargarCriptos() {
+  try {
+    const data = await MostrarCriptos();
+    codigosCripto.value = data.map((cripto) => cripto.criptoCode);
+    if (codigosCripto.value.length === 0) {
+      codigosCripto.value = ['BTC', 'ETH', 'USDT', 'SOL', 'ADA', 'XRP'];
+    }
+  } catch (error) {
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+    codigosCripto.value = ['BTC', 'ETH', 'USDT', 'SOL', 'ADA', 'XRP'];
   }
 }
 
 async function cargarOperaciones() {
-  const response = await MostrarOperacion();
-  operaciones.value = response?.data || [];
+  try {
+    cargando.value = true;
+    operaciones.value = await MostrarOperacion();
+  } catch (error) {
+    operaciones.value = [];
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  } finally {
+    cargando.value = false;
+  }
 }
 
-async function crearOperacion() {
-  if (!form.value.clienteID || !form.value.criptoCode || !form.value.criptoAmount || !form.value.action) {
-    notificacionRef.value?.mostrar('Error', 'Por favor complete todos los campos');
+async function aplicarFiltro() {
+  if (!filtroClienteId.value) {
+    await cargarOperaciones();
     return;
   }
 
   try {
-    const operacionCreada = await CrearOperacion(
+    cargando.value = true;
+    operaciones.value = await MostrarOperacionPorCliente(Number(filtroClienteId.value));
+  } catch (error) {
+    operaciones.value = [];
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  } finally {
+    cargando.value = false;
+  }
+}
+
+async function limpiarFiltro() {
+  filtroClienteId.value = null;
+  await cargarOperaciones();
+}
+
+async function crearOperacion() {
+  if (!form.value.clienteID || !form.value.criptoCode || !form.value.criptoAmount || !form.value.action) {
+    mensaje.value = 'Completá todos los campos.';
+    mensajeTipo.value = 'error';
+    return;
+  }
+
+  try {
+    cargando.value = true;
+    mensaje.value = '';
+
+    await CrearOperacion(
       Number(form.value.clienteID),
       form.value.criptoCode,
       Number(form.value.criptoAmount),
       form.value.action
     );
 
-    if (operacionCreada) {
-      notificacionRef.value?.mostrar('Operación creada', 'La operación se registró con éxito');
-      form.value = {
-        clienteID: '',
-        criptoCode: '',
-        criptoAmount: null,
-        action: ''
-      };
-      await cargarOperaciones();
-    }
+    mensaje.value = 'Operación creada correctamente.';
+    mensajeTipo.value = 'ok';
+    form.value = {
+      clienteID: null,
+      criptoCode: '',
+      criptoAmount: null,
+      action: ''
+    };
+
+    await aplicarFiltro();
   } catch (error) {
-    console.error('Error al crear la operación:', error);
-    notificacionRef.value?.mostrar('Error', 'No se pudo registrar la operación');
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  } finally {
+    cargando.value = false;
   }
 }
 

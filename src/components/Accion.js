@@ -1,21 +1,13 @@
-import api from '../services/api'
+import api, { getApiErrorMessage } from '../services/api';
 
-// export async function CrearAccion(nombre){
-//     try{
-//         await api.post('Accion', nombre)
-//         return true
-//     }catch(error){
-//         console.log(`error al crear una accion \n ${error}`)
-//         return false
-//     }
-// }
-
-// no creo usar el crear acciones sinceramente pero se agrego por si las dudas...
 export async function MostrarAcciones() {
-    try{
-        return await api.get(`Accion`)
-    }catch(error){
-        console.log(`error al mostrar acciones \n ${error}`)
-        return false
+    try {
+        const response = await api.get('Accion');
+        return response.data ?? [];
+    } catch (error) {
+        if (error.response?.status === 404) {
+            return [];
+        }
+        throw new Error(getApiErrorMessage(error, 'No se pudieron obtener acciones.'));
     }
 }

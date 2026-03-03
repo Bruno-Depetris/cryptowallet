@@ -2,7 +2,8 @@
   <div class="grid">
     <section class="card">
       <h2 class="title">Panel principal</h2>
-      <p>Frontend completo y simple para gestionar clientes, cuentas, operaciones y reportes.</p>
+      <p class="muted">Frontend rehacerdo para consumir tu API REST en Railway.</p>
+      <p class="muted">Flujo sugerido: crear cliente → generar operaciones → consultar dashboard.</p>
     </section>
 
     <section class="grid grid-2">

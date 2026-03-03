@@ -1,7 +1,12 @@
 <template>
   <section class="card">
-    <h2 class="title">Historial de precios</h2>
-    <button type="button" @click="cargarHistorial">Recargar</button>
+    <div class="toolbar">
+      <h2 class="title">Historial de precios</h2>
+      <button type="button" class="secondary" @click="cargarHistorial" :disabled="cargando">Recargar</button>
+    </div>
+
+    <p v-if="mensaje" class="message" :class="mensajeTipo">{{ mensaje }}</p>
+    <p v-if="!historial.length" class="muted">No hay historial de precios cargado.</p>
 
     <table>
       <thead>
@@ -23,28 +28,30 @@
         </tr>
       </tbody>
     </table>
-
-    <NotificacionPopup ref="notificacionRef" />
   </section>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue';
 import { MostrarHistorialPrecios } from '@/components/HistorialPrecio';
-import NotificacionPopup from '@/assets/NotificacionPopup.vue';
 
 const historial = ref([]);
-const notificacionRef = ref(null);
+const cargando = ref(false);
+const mensaje = ref('');
+const mensajeTipo = ref('ok');
 
 onMounted(cargarHistorial);
 
 async function cargarHistorial() {
-  const response = await MostrarHistorialPrecios();
-  if (response?.data) {
-    historial.value = response.data;
-  } else {
+  try {
+    cargando.value = true;
+    historial.value = await MostrarHistorialPrecios();
+  } catch (error) {
     historial.value = [];
-    notificacionRef.value?.mostrar('Sin datos', 'No se encontró historial de precios.');
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  } finally {
+    cargando.value = false;
   }
 }
 

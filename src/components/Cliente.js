@@ -1,32 +1,23 @@
+import api, { getApiErrorMessage } from '../services/api';
 
-import api  from "../services/api";
-
+export async function MostrarClientes() {
+  try {
+    const response = await api.get('Cliente');
+    return response.data ?? [];
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return [];
+    }
+    throw new Error(getApiErrorMessage(error, 'No se pudo obtener clientes.'));
+  }
+}
 
 export async function CargarCliente(nombre, email) {
   try {
     const response = await api.post('Cliente', { nombre, email });
-    await CrearCuenta(response?.data?.clienteID || response?.data?.ClienteID);
-    return response?.data || true;
+    return response.data;
   } catch (error) {
-    console.error("Error al cargar cliente:", error);
-    return null;
-  }
-}
-
-export async function MostrarClientes() {
-  try{
-    return await api.get('Cliente');
-  }catch(error){
-    return null;
-  }
-}
-
-export async function EliminarCliente(id) {
-  try{
-    await api.delete(`Cliente/${id}`);
-    return true;
-  }catch(error){
-    return false;
+    throw new Error(getApiErrorMessage(error, 'No se pudo crear el cliente.'));
   }
 }
 
@@ -35,27 +26,16 @@ export async function EditarCliente(id, nombre, email) {
     await api.put(`Cliente/${id}`, { clienteID: id, nombre, email });
     return true;
   } catch (error) {
-    console.error('Error al editar cliente:', error);
-    return false;
+    throw new Error(getApiErrorMessage(error, 'No se pudo actualizar el cliente.'));
   }
 }
 
-export async function CrearCuenta(clienteID) {
+export async function EliminarCliente(id) {
   try {
-    const estadoId = 1;
-
-    if (!clienteID) {
-      console.error("No se encontró ID de cliente para crear la cuenta.");
-      return false;
-    }
-
-    await api.post('Cuenta', { clienteID, estadoID: estadoId });
-
+    await api.delete(`Cliente/${id}`);
     return true;
-
   } catch (error) {
-    console.log("Error al crear la cuenta:", error.response?.data || error);
-    return false;
+    throw new Error(getApiErrorMessage(error, 'No se pudo eliminar el cliente.'));
   }
 }
 

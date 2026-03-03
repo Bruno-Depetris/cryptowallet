@@ -1,35 +1,31 @@
-
-import api from "../services/api"
-
-
-export async function CrearCuenta(clienteID, estadoID = 1) {
-    try{
-        const response = await api.post('Cuenta', { clienteID, estadoID });
-        return response?.data || true;
-    }catch(error){
-        console.log(`Error al crear la cuenta: ${error}`);
-        return false;
-    }
-}
-
+import api, { getApiErrorMessage } from '../services/api';
 
 export async function MostrarCuentas() {
-    try{
-        return await api.get('Cuenta')
-    }catch(error){
-        console.log(`Error al mostrar las cuentas: \n ${error}`)
-        return null;
+    try {
+        const response = await api.get('Cuenta');
+        return response.data ?? [];
+    } catch (error) {
+        if (error.response?.status === 404) {
+            return [];
+        }
+        throw new Error(getApiErrorMessage(error, 'No se pudieron obtener las cuentas.'));
     }
-    
 }
 
-export async function EliminarCuenta(id){
-    try{
+export async function CrearCuenta(clienteID, estadoID = 1) {
+    try {
+        const response = await api.post('Cuenta', { clienteID, estadoID });
+        return response.data;
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'No se pudo crear la cuenta.'));
+    }
+}
+
+export async function EliminarCuenta(id) {
+    try {
         await api.delete(`Cuenta/${id}`);
         return true;
-    }catch(error){
-        console.log(`Error al eliminar una cuenta ${error}`);
-        return false;
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'No se pudo eliminar la cuenta.'));
     }
-
 }

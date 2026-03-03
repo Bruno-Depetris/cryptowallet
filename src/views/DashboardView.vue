@@ -3,20 +3,23 @@
     <section class="card">
       <h2 class="title">Dashboard por cliente</h2>
       <label>Cliente</label>
-      <select v-model="clienteID">
+      <select v-model.number="clienteID">
         <option disabled value="">Seleccione un cliente</option>
         <option v-for="cliente in clientes" :key="cliente.clienteID" :value="cliente.clienteID">
           {{ cliente.nombre }} ({{ cliente.email }})
         </option>
       </select>
 
-      <button type="button" @click="cargarDashboard">Consultar</button>
+      <button type="button" @click="cargarDashboard" :disabled="cargando">Consultar</button>
+      <p v-if="mensaje" class="message" :class="mensajeTipo">{{ mensaje }}</p>
     </section>
 
     <section class="card" v-if="dashboard">
       <h2 class="title">Resumen</h2>
       <p><strong>Cliente ID:</strong> {{ dashboard.clienteID }}</p>
       <p><strong>Total money:</strong> ${{ Number(dashboard.totalMoney || 0).toLocaleString('es-AR') }}</p>
+
+      <p v-if="!(dashboard.items || []).length" class="muted">El cliente no tiene tenencias netas.</p>
 
       <table>
         <thead>
@@ -35,8 +38,6 @@
         </tbody>
       </table>
     </section>
-
-    <NotificacionPopup ref="notificacionRef" />
   </div>
 </template>
 
@@ -44,32 +45,52 @@
 import { onMounted, ref } from 'vue';
 import { MostrarClientes } from '@/components/Cliente';
 import { ObtenerDashboardPorCliente } from '@/components/Dashboard';
-import NotificacionPopup from '@/assets/NotificacionPopup.vue';
 
 const clientes = ref([]);
-const clienteID = ref('');
+const clienteID = ref(null);
 const dashboard = ref(null);
-const notificacionRef = ref(null);
+const cargando = ref(false);
+const mensaje = ref('');
+const mensajeTipo = ref('ok');
 
 onMounted(cargarClientes);
 
 async function cargarClientes() {
-  const response = await MostrarClientes();
-  clientes.value = response?.data || [];
+  try {
+    clientes.value = await MostrarClientes();
+  } catch (error) {
+    clientes.value = [];
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  }
 }
 
 async function cargarDashboard() {
   if (!clienteID.value) {
-    notificacionRef.value?.mostrar('Atención', 'Seleccione un cliente.');
+    mensaje.value = 'Seleccione un cliente.';
+    mensajeTipo.value = 'error';
     return;
   }
 
-  const response = await ObtenerDashboardPorCliente(clienteID.value);
-  if (response?.data) {
-    dashboard.value = response.data;
-  } else {
+  try {
+    cargando.value = true;
+    mensaje.value = '';
+
+    const data = await ObtenerDashboardPorCliente(Number(clienteID.value));
+    if (!data) {
+      dashboard.value = null;
+      mensaje.value = 'No hay datos para ese cliente.';
+      mensajeTipo.value = 'error';
+      return;
+    }
+
+    dashboard.value = data;
+  } catch (error) {
     dashboard.value = null;
-    notificacionRef.value?.mostrar('Sin datos', 'No se encontró información para ese cliente.');
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  } finally {
+    cargando.value = false;
   }
 }
 </script>

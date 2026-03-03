@@ -1,8 +1,31 @@
-import api from '../services/api'
+import api, { getApiErrorMessage } from '../services/api';
 
+export async function MostrarOperacion() {
+    try {
+        const response = await api.get('Operacion');
+        return response.data ?? [];
+    } catch (error) {
+        if (error.response?.status === 404) {
+            return [];
+        }
+        throw new Error(getApiErrorMessage(error, 'No se pudieron obtener operaciones.'));
+    }
+}
+
+export async function MostrarOperacionPorCliente(clienteId) {
+    try {
+        const response = await api.get(`Operacion/cliente/${clienteId}`);
+        return response.data ?? [];
+    } catch (error) {
+        if (error.response?.status === 404) {
+            return [];
+        }
+        throw new Error(getApiErrorMessage(error, 'No se pudieron obtener operaciones del cliente.'));
+    }
+}
 
 export async function CrearOperacion(ClienteID, CriptoCode, CriptoAmount, Action) {
-    try{
+    try {
         const payload = {
             ClienteID,
             CriptoCode,
@@ -10,29 +33,9 @@ export async function CrearOperacion(ClienteID, CriptoCode, CriptoAmount, Action
             Action,
             Datetime: new Date().toISOString()
         };
-        const response = await api.post('Operacion', payload)
-        return response?.data || true;
-    }catch(error){
-        console.log(`Error al cargar la operacion \n ${error}`);    
-        return null;
-    }
-}
-
-export async function MostrarOperacion(){
-    try{
-        return await api.get('Operacion')
-
-    }catch(error){
-        console.log(`Error al mostrar operaciones \n datos del error : \n ${error}`);
-        return null;
-    }
-}
-
-export async function MostrarOperacionPorCliente(clienteId){
-    try{
-        return await api.get(`Operacion/cliente/${clienteId}`)
-    }catch(error){
-        console.log(`Error al mostrar operaciones por cliente \n ${error}`);
-        return null;
+        const response = await api.post('Operacion', payload);
+        return response.data;
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'No se pudo crear la operación.'));
     }
 }

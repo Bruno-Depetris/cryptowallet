@@ -1,10 +1,13 @@
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 export async function MostrarHistorialPrecios() {
   try {
-    return await api.get('HistorialPrecio');
+    const response = await api.get('HistorialPrecio');
+    return response.data ?? [];
   } catch (error) {
-    console.log(`Error al mostrar historial de precios: ${error}`);
-    return null;
+    if (error.response?.status === 404) {
+      return [];
+    }
+    throw new Error(getApiErrorMessage(error, 'No se pudo obtener el historial de precios.'));
   }
 }

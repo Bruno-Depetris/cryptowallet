@@ -9,13 +9,21 @@
         <label>Email</label>
         <input v-model.trim="form.email" type="email" placeholder="Ej: juan@email.com" required />
 
-        <button type="submit">{{ editandoId ? 'Guardar cambios' : 'Crear cliente' }}</button>
+        <button type="submit" :disabled="cargando">{{ editandoId ? 'Guardar cambios' : 'Crear cliente' }}</button>
         <button v-if="editandoId" type="button" class="secondary" @click="cancelarEdicion">Cancelar</button>
       </form>
+
+      <p v-if="mensaje" class="message" :class="mensajeTipo">{{ mensaje }}</p>
     </section>
 
     <section class="card">
-      <h2 class="title">Listado</h2>
+      <div class="toolbar">
+        <h2 class="title">Listado</h2>
+        <button type="button" class="secondary" @click="cargarClientes" :disabled="cargando">Recargar</button>
+      </div>
+
+      <p v-if="!clientes.length" class="muted">No hay clientes cargados.</p>
+
       <table>
         <thead>
           <tr>
@@ -33,51 +41,86 @@
             <td>
               <div class="actions">
                 <button type="button" class="secondary" @click="prepararEdicion(c)">Editar</button>
-                <button type="button" class="danger" @click="eliminarCliente(c.clienteID)">Eliminar</button>
+                <button type="button" class="danger" @click="eliminarCliente(c.clienteID)" :disabled="cargando">Eliminar</button>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
     </section>
-
-    <NotificacionPopup ref="notificacionRef" />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
 import { CargarCliente, EditarCliente, EliminarCliente, MostrarClientes } from '../components/Cliente';
-import NotificacionPopup from '@/assets/NotificacionPopup.vue';
 
 onMounted(() => {
   cargarClientes();
 });
 
-const notificacionRef = ref(null);
 const editandoId = ref(null);
 const clientes = ref([]);
+const cargando = ref(false);
+const mensaje = ref('');
+const mensajeTipo = ref('ok');
 const form = ref({ nombre: '', email: '' });
 
 async function guardarCliente() {
-  if (editandoId.value) {
-    const ok = await EditarCliente(editandoId.value, form.value.nombre, form.value.email);
-    if (ok) {
-      notificacionRef.value?.mostrar('Cliente actualizado', 'Se guardaron los cambios.');
+  try {
+    cargando.value = true;
+    mensaje.value = '';
+
+    if (editandoId.value) {
+      await EditarCliente(editandoId.value, form.value.nombre, form.value.email);
+      mensaje.value = 'Cliente actualizado correctamente.';
+      mensajeTipo.value = 'ok';
       cancelarEdicion();
-      await cargarClientes();
     } else {
-      notificacionRef.value?.mostrar('Error', 'No se pudo actualizar el cliente.');
-    }
-  } else {
-    const response = await CargarCliente(form.value.nombre, form.value.email);
-    if (response) {
-      notificacionRef.value?.mostrar('Cliente creado', 'Se creó el cliente y su cuenta inicial.');
+      await CargarCliente(form.value.nombre, form.value.email);
+      mensaje.value = 'Cliente creado correctamente.';
+      mensajeTipo.value = 'ok';
       form.value = { nombre: '', email: '' };
-      await cargarClientes();
-    } else {
-      notificacionRef.value?.mostrar('Error', 'No se pudo crear el cliente.');
     }
+
+    await cargarClientes();
+  } catch (error) {
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  } finally {
+    cargando.value = false;
+  }
+}
+
+async function cargarClientes() {
+  try {
+    cargando.value = true;
+    clientes.value = await MostrarClientes();
+  } catch (error) {
+    clientes.value = [];
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  } finally {
+    cargando.value = false;
+  }
+}
+
+async function eliminarCliente(id) {
+  if (!window.confirm(`¿Eliminar cliente ${id}?`)) {
+    return;
+  }
+
+  try {
+    cargando.value = true;
+    await EliminarCliente(id);
+    mensaje.value = 'Cliente eliminado correctamente.';
+    mensajeTipo.value = 'ok';
+    await cargarClientes();
+  } catch (error) {
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  } finally {
+    cargando.value = false;
   }
 }
 
@@ -90,28 +133,9 @@ function cancelarEdicion() {
   editandoId.value = null;
   form.value = { nombre: '', email: '' };
 }
-
-async function cargarClientes() {
-  const response = await MostrarClientes();
-  if (response?.data) {
-    clientes.value = response.data;
-  } else {
-    notificacionRef.value?.mostrar('Error', 'No se pudo obtener la lista de clientes.');
-  }
-}
-
-async function eliminarCliente(id) {
-  const response = await EliminarCliente(id);
-  if (response) {
-    notificacionRef.value?.mostrar('Cliente eliminado', 'Eliminado correctamente.');
-    await cargarClientes();
-  } else {
-    notificacionRef.value?.mostrar('Error', 'No se pudo eliminar el cliente.');
-  }
-}
 </script>
 
-<style>
+<style scoped>
 .actions {
   display: flex;
   gap: 0.4rem;

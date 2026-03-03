@@ -1,7 +1,12 @@
 <template>
   <section class="card">
-    <h2 class="title">Movimientos</h2>
-    <button type="button" @click="cargarMovimientos">Recargar</button>
+    <div class="toolbar">
+      <h2 class="title">Movimientos</h2>
+      <button type="button" class="secondary" @click="cargarMovimientos" :disabled="cargando">Recargar</button>
+    </div>
+
+    <p v-if="mensaje" class="message" :class="mensajeTipo">{{ mensaje }}</p>
+    <p v-if="!movimientos.length" class="muted">No se encontraron movimientos.</p>
 
     <table>
       <thead>
@@ -25,28 +30,30 @@
         </tr>
       </tbody>
     </table>
-
-    <NotificacionPopup ref="notificacionRef" />
   </section>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue';
 import { MostrarMovimientos } from '@/components/Movimiento';
-import NotificacionPopup from '@/assets/NotificacionPopup.vue';
 
 const movimientos = ref([]);
-const notificacionRef = ref(null);
+const cargando = ref(false);
+const mensaje = ref('');
+const mensajeTipo = ref('ok');
 
 onMounted(cargarMovimientos);
 
 async function cargarMovimientos() {
-  const response = await MostrarMovimientos();
-  if (response?.data) {
-    movimientos.value = response.data;
-  } else {
+  try {
+    cargando.value = true;
+    movimientos.value = await MostrarMovimientos();
+  } catch (error) {
     movimientos.value = [];
-    notificacionRef.value?.mostrar('Sin datos', 'No se encontraron movimientos.');
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  } finally {
+    cargando.value = false;
   }
 }
 
