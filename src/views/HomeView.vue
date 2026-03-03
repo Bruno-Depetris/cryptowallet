@@ -2,7 +2,7 @@
   <div class="grid">
     <section class="card">
       <h2 class="title">Panel principal</h2>
-      <p class="muted">Flujo sugerido: crear cliente → generar operaciones → consultar dashboard.</p>
+      <p class="muted">crear cliente → generar operaciones → consultar dashboard.</p>
     </section>
 
     <section class="grid grid-2">
