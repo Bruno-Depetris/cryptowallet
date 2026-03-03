@@ -2,7 +2,7 @@
   <div id="app" class="app-shell">
     <aside class="sidebar">
       <h1>Billetera Crypto</h1>
-      <p class="subtitle">Panel universitario</p>
+      <p class="subtitle">BRUNO DEPETRIS</p>
 
       <nav>
         <router-link to="/">Inicio</router-link>
