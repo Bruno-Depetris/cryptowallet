@@ -24,6 +24,15 @@ export async function MostrarOperacionPorCliente(clienteId) {
     }
 }
 
+export async function ObtenerPrecioActualCripto(criptoCode) {
+    try {
+        const response = await api.get(`Operacion/precio/${criptoCode}`);
+        return response.data;
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'No se pudo obtener el precio actual de la criptomoneda.'));
+    }
+}
+
 export async function CrearOperacion(ClienteID, CriptoCode, CriptoAmount, Action) {
     try {
         const payload = {

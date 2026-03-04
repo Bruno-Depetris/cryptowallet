@@ -17,8 +17,17 @@
           <option v-for="code in codigosCripto" :key="code" :value="code">{{ code }}</option>
         </select>
 
+        <p class="muted" v-if="form.criptoCode && cargandoPrecio">Consultando precio actual...</p>
+        <p class="muted" v-else-if="form.criptoCode && precioActual > 0">
+          Precio actual {{ form.criptoCode }}: ${{ Number(precioActual).toLocaleString('es-AR') }}
+        </p>
+
         <label>Cantidad cripto</label>
-        <input v-model.number="form.criptoAmount" type="number" min="0" step="0.000001" required />
+        <input v-model.number="form.criptoAmount" type="number" min="0.000001" step="0.000001" required />
+
+        <p class="muted" v-if="montoEstimado > 0">
+          Monto estimado: ${{ Number(montoEstimado).toLocaleString('es-AR') }}
+        </p>
 
         <label>Acción</label>
         <select v-model="form.action" required>
@@ -27,7 +36,7 @@
           <option value="sale">sale</option>
         </select>
 
-        <button type="submit" :disabled="cargando">Crear operación</button>
+        <button type="submit" :disabled="cargando || cargandoPrecio">Crear operación</button>
       </form>
 
       <p v-if="mensaje" class="message" :class="mensajeTipo">{{ mensaje }}</p>
@@ -75,8 +84,8 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
-import { CrearOperacion, MostrarOperacion, MostrarOperacionPorCliente } from '../components/Operacion';
+import { computed, onMounted, ref, watch } from 'vue';
+import { CrearOperacion, MostrarOperacion, MostrarOperacionPorCliente, ObtenerPrecioActualCripto } from '../components/Operacion';
 import { MostrarClientes } from '../components/Cliente';
 import { MostrarCriptos } from '../components/Criptos';
 
@@ -84,9 +93,11 @@ const clientes = ref([]);
 const operaciones = ref([]);
 const codigosCripto = ref([]);
 const cargando = ref(false);
+const cargandoPrecio = ref(false);
 const filtroClienteId = ref(null);
 const mensaje = ref('');
 const mensajeTipo = ref('ok');
+const precioActual = ref(0);
 
 const form = ref({
   clienteID: null,
@@ -95,9 +106,32 @@ const form = ref({
   action: ''
 });
 
+const montoEstimado = computed(() => {
+  const cantidad = Number(form.value.criptoAmount || 0);
+  const precio = Number(precioActual.value || 0);
+
+  if (cantidad <= 0 || precio <= 0) {
+    return 0;
+  }
+
+  return cantidad * precio;
+});
+
 onMounted(async () => {
   await Promise.all([cargarClientes(), cargarCriptos(), cargarOperaciones()]);
 });
+
+watch(
+  () => form.value.criptoCode,
+  async (nuevoCodigo) => {
+    if (!nuevoCodigo) {
+      precioActual.value = 0;
+      return;
+    }
+
+    await cargarPrecioActual(nuevoCodigo);
+  }
+);
 
 async function cargarClientes() {
   try {
@@ -119,6 +153,26 @@ async function cargarCriptos() {
     mensaje.value = error.message;
     mensajeTipo.value = 'error';
     codigosCripto.value = ['BTC', 'ETH', 'USDT', 'SOL', 'ADA', 'XRP'];
+  }
+}
+
+async function cargarPrecioActual(criptoCode) {
+  try {
+    cargandoPrecio.value = true;
+    const data = await ObtenerPrecioActualCripto(criptoCode);
+    const precio = Number(data?.precio || 0);
+    precioActual.value = precio > 0 ? precio : 0;
+
+    if (precioActual.value <= 0) {
+      mensaje.value = `No se pudo obtener un precio válido para ${criptoCode}.`;
+      mensajeTipo.value = 'error';
+    }
+  } catch (error) {
+    precioActual.value = 0;
+    mensaje.value = error.message;
+    mensajeTipo.value = 'error';
+  } finally {
+    cargandoPrecio.value = false;
   }
 }
 
@@ -159,8 +213,22 @@ async function limpiarFiltro() {
 }
 
 async function crearOperacion() {
-  if (!form.value.clienteID || !form.value.criptoCode || !form.value.criptoAmount || !form.value.action) {
+  const cantidad = Number(form.value.criptoAmount);
+
+  if (!form.value.clienteID || !form.value.criptoCode || !form.value.action || Number.isNaN(cantidad)) {
     mensaje.value = 'Completá todos los campos.';
+    mensajeTipo.value = 'error';
+    return;
+  }
+
+  if (cantidad <= 0) {
+    mensaje.value = 'La cantidad a operar debe ser mayor a 0.';
+    mensajeTipo.value = 'error';
+    return;
+  }
+
+  if (precioActual.value <= 0) {
+    mensaje.value = 'No hay precio actual disponible para la criptomoneda seleccionada.';
     mensajeTipo.value = 'error';
     return;
   }
@@ -169,10 +237,18 @@ async function crearOperacion() {
     cargando.value = true;
     mensaje.value = '';
 
+    await cargarPrecioActual(form.value.criptoCode);
+
+    if (precioActual.value <= 0) {
+      mensaje.value = 'No se pudo validar el precio actual de la criptomoneda.';
+      mensajeTipo.value = 'error';
+      return;
+    }
+
     await CrearOperacion(
       Number(form.value.clienteID),
       form.value.criptoCode,
-      Number(form.value.criptoAmount),
+      cantidad,
       form.value.action
     );
 

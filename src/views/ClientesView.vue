@@ -96,6 +96,7 @@ async function cargarClientes() {
   try {
     cargando.value = true;
     clientes.value = await MostrarClientes();
+    
   } catch (error) {
     clientes.value = [];
     mensaje.value = error.message;
